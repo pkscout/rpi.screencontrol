@@ -1,0 +1,12 @@
+[Unit]
+Description = Start/Stop RPI Weatherstation Lite
+After = multi-user.target
+
+[Service]
+Type = simple
+User = pi
+KillSignal = SIGINT
+ExecStart = /usr/bin/python3 /home/pi/rpi.screencontrol/execute.py
+
+[Install]
+WantedBy = multi-user.target
