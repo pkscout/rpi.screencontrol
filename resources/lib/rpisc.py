@@ -86,6 +86,7 @@ class ScreenControl:
             self.KEEPRUNNING = False
         except Exception as e:
             self._handleaction(self.FIXEDBRIGHTNESS)
+            self.KEEPRUNNING = False
             self.LW.log([traceback.format_exc()], 'error')
             print(traceback.format_exc())
 
