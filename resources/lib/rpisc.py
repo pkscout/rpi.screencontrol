@@ -25,7 +25,7 @@ class ScreenControl:
         self.BRIGHTRUN = False
         self.DIMRUN = False
         self.WAITTIME = config.Get('autodimdelta') * 60
-        self.UpdateSettings()
+        self._updatesettings()
 
     def Start(self):
         self.LW.log(['starting up ScreenControl'], 'info')
@@ -50,21 +50,21 @@ class ScreenControl:
                     if do_dark and not self.DARKRUN:
                         self.LW.log(
                             ['dark trigger activated with ' + self.DARKACTION])
-                        self.HandleAction(self.DARKACTION)
+                        self._handleaction(self.DARKACTION)
                         self.DARKRUN = True
                         self.BRIGHTRUN = False
                         self.DIMRUN = False
                     elif do_bright and not self.BRIGHTRUN:
                         self.LW.log(
                             ['bright trigger activated with ' + self.BRIGHTACTION])
-                        self.HandleAction(self.BRIGHTACTION)
+                        self._handleaction(self.BRIGHTACTION)
                         self.DARKRUN = False
                         self.BRIGHTRUN = True
                         self.DIMRUN = False
                     elif do_dim and not self.DIMRUN:
                         self.LW.log(
                             ['dim trigger activated with ' + self.DIMACTION])
-                        self.HandleAction(self.DIMACTION)
+                        self._handleaction(self.DIMACTION)
                         self.DARKRUN = False
                         self.BRIGHTRUN = False
                         self.DIMRUN = True
@@ -78,16 +78,18 @@ class ScreenControl:
                             if self._is_time(onetrigger[0], checkdays=checkdays):
                                 self.LW.log(['timed trigger %s activated with %s' % (
                                     onetrigger[0], onetrigger[1])])
-                                self.HandleAction(onetrigger[1])
+                                self._handleaction(onetrigger[1])
                 time.sleep(self.WAITTIME)
-                self.UpdateSettings()
+                self._updatesettings()
         except KeyboardInterrupt:
+            self._handleaction(self.FIXEDBRIGHTNESS)
             self.KEEPRUNNING = False
         except Exception as e:
+            self._handleaction(self.FIXEDBRIGHTNESS)
             self.LW.log([traceback.format_exc()], 'error')
             print(traceback.format_exc())
 
-    def HandleAction(self, action):
+    def _handleaction(self, action):
         action = action.lower()
         if action == 'brightnessup' and self.SCREENSTATE == 'On':
             self.SCREEN.AdjustBrightness(direction='up')
@@ -133,7 +135,7 @@ class ScreenControl:
                     self.LW.log(
                         ['screen is off, so set stored brightness to ' + str(level)])
 
-    def UpdateSettings(self):
+    def _updatesettings(self):
         self.AUTODIM = config.Get('autodim')
         self.DARKACTION = config.Get('specialtriggers').get('dark')
         self.DIMACTION = config.Get('specialtriggers').get('dim')
@@ -145,7 +147,7 @@ class ScreenControl:
             self.DARKRUN = False
             self.BRIGHTRUN = False
             self.DIMRUN = False
-            self.HandleAction(self.FIXEDBRIGHTNESS)
+            self._handleaction(self.FIXEDBRIGHTNESS)
 
     def _is_time(self, thetime, checkdays=''):
         action_time = self._set_datetime(thetime)
