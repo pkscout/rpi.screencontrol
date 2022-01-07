@@ -1,7 +1,7 @@
 # *  Credits:
 # *
-# *  v.1.0.0
-# *  original RPi Camera classes by pkscout
+# *  v.1.1.0
+# *  original Light Sensor classes by pkscout
 
 import time
 try:
@@ -49,19 +49,18 @@ class AmbientSensor:
 class RPiCamera:
     def __init__(self, useled=False, testmode=False):
         self.TESTMODE = testmode
-        self.USELED = useled
+        self.CAMERA = picamera.PiCamera()
+        self.CAMERA.exposure_mode = 'auto'
+        self.CAMERA.awb_mode = 'auto'
+        self.CAMERA.resolution = (128, 80)
+        self.CAMERA.led = useled
 
     def LightLevel(self):
         if has_camera:
             for i in range(0, 5):
-                with picamera.PiCamera() as camera:
-                    camera.resolution = (128, 80)
-                    camera.led = self.USELED
-                    with picamera.array.PiRGBArray(camera) as stream:
-                        camera.exposure_mode = 'auto'
-                        camera.awb_mode = 'auto'
-                        camera.capture(stream, format='rgb')
-                        reading = int(np.average(stream.array[..., 1])) + 1
+                with picamera.array.PiRGBArray(self.CAMERA) as stream:
+                    self.CAMERA.capture(stream, format='rgb')
+                    reading = int(np.average(stream.array[..., 1])) + 1
                 if reading:
                     return reading
         elif self.TESTMODE:
