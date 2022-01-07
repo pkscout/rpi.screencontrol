@@ -49,11 +49,12 @@ class AmbientSensor:
 class RPiCamera:
     def __init__(self, useled=False, testmode=False):
         self.TESTMODE = testmode
-        self.CAMERA = picamera.PiCamera()
-        self.CAMERA.exposure_mode = 'auto'
-        self.CAMERA.awb_mode = 'auto'
-        self.CAMERA.resolution = (128, 80)
-        self.CAMERA.led = useled
+        if has_camera:
+            self.CAMERA = picamera.PiCamera()
+            self.CAMERA.exposure_mode = 'auto'
+            self.CAMERA.awb_mode = 'auto'
+            self.CAMERA.resolution = (128, 80)
+            self.CAMERA.led = useled
 
     def LightLevel(self):
         if has_camera:
