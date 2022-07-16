@@ -4,14 +4,19 @@
 # *  original Light Sensor classes by pkscout
 
 import time
+import numpy as np
+import random
 try:
-    import random
     import picamera
     import picamera.array
-    import numpy as np
     has_camera = True
 except ImportError:
     has_camera = False
+try:
+    from picamera2 import Picamera2
+    has_camera2 = True
+except:
+    has_camera2 = False
 try:
     import smbus2
     has_smbus = True
@@ -48,22 +53,33 @@ class AmbientSensor:
 
 class RPiCamera:
     def __init__(self, useled=False, testmode=False):
+        self.WIDTH = 128
+        self.HEIGHT = 80
         self.TESTMODE = testmode
-        if has_camera:
+        if has_camera2:
+            self.CAMERA = Picamera2()
+            config = picam2.create_still_configuration(
+                lores={"size": (self.WIDTH, self.HEIGHT)})
+            self.CAMERA.configure(config)
+        elif has_camera:
             self.CAMERA = picamera.PiCamera()
             self.CAMERA.exposure_mode = 'auto'
             self.CAMERA.awb_mode = 'auto'
-            self.CAMERA.resolution = (128, 80)
+            self.CAMERA.resolution = (self.WIDTH, self.HEIGHT)
             self.CAMERA.led = useled
 
     def LightLevel(self):
-        if has_camera:
+        reading = None
+        if has_camera2:
+            self.CAMERA.start()
+            np_array = self.CAMERA.capture_array('lores')
+            self.CAMERA.stop()
+            reading = int(np.average(np_array[:self.HEIGHT, :]))
+        elif has_camera:
             for i in range(0, 5):
                 with picamera.array.PiRGBArray(self.CAMERA) as stream:
                     self.CAMERA.capture(stream, format='rgb')
                     reading = int(np.average(stream.array[..., 1])) + 1
-                if reading:
-                    return reading
         elif self.TESTMODE:
-            return random.randint(0, 100)
-        return None
+            reading = random.randint(0, 100)
+        return reading
