@@ -1,2 +1,5 @@
+v.1.1.0
+- updated camera code to work with Picamera2 in Raspian Bullseye
+
 v 1.0.0
 - initial code stripped from rpi.weathersatationlite

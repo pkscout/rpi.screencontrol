@@ -58,7 +58,7 @@ class RPiCamera:
         self.TESTMODE = testmode
         if has_camera2:
             self.CAMERA = Picamera2()
-            config = picam2.create_still_configuration(
+            config = self.CAMERA.create_still_configuration(
                 lores={"size": (self.WIDTH, self.HEIGHT)})
             self.CAMERA.configure(config)
         elif has_camera:
@@ -71,10 +71,20 @@ class RPiCamera:
     def LightLevel(self):
         reading = None
         if has_camera2:
-            self.CAMERA.start()
+            no_camera = True
+            while no_camera:
+                try:
+                    self.CAMERA.start()
+                    no_camera = False
+                except RuntimeError:
+                    no_camera = True
+                if no_camera:
+                    print('camera error, waiting 1 second and trying again')
+                    time.sleep(1)
             np_array = self.CAMERA.capture_array('lores')
             self.CAMERA.stop()
-            reading = int(np.average(np_array[:self.HEIGHT, :]))
+            reading = int(100*np.average(np_array[:self.HEIGHT, :])/235)
+            # this sets the brightness as 0 to 100
         elif has_camera:
             for i in range(0, 5):
                 with picamera.array.PiRGBArray(self.CAMERA) as stream:
