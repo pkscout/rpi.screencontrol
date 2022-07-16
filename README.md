@@ -4,12 +4,11 @@ This python script is designed to run as a service on a Raspberry Pi that has a 
 This script sets the brightness, and screen on/off based on triggers (dark, dim, bright) or times.
 
 ## PREREQUISITES:
-1. You should be running Raspian Buster or later, although right now I wouldn't recommend Bullseye unless you like beta testing software.
+1. You should be running Raspian Buster or later.  This script does support the new Picamera2 in Raspian Bullseye.
 1. Python3 is required.
-1. For rpi.screencontrol to function properly, there is a module you need to install to control the RPi Touchscreen. From a terminal window type `sudo pip3 install rpi-backlight` or `sudo pip install rpi-backlight` (if you're system only has Python3).
 
 ## PI CONFIGURATION:
-To use the BH1750 ambient light sensor and/or the BME280 temperature sensor, you need to enable i2c in raspi-config. To use the Pi Camera to detect light levels, the camera must be turned on in raspi-config.  Both the camera and i2c options are under INTERFACING OPTIONS in raspi-config.  If you are running Bullseye, you must enable the camera in legacy mode, as there are currently no Python bindings for libcamera.  If that doesn't work, use Buster.
+To use the BH1750 ambient light sensor and/or the BME280 temperature sensor, you need to enable i2c in raspi-config. If you are using Raspian Buster and the Pi Camera to detect light levels, the camera must be turned on in raspi-config.  Both the camera and i2c options are under INTERFACING OPTIONS in raspi-config.
 
 To control the RPi 7" touchscreen you need to also edit the backlight rules. From a terminal window:
 ```
@@ -23,16 +22,25 @@ SUBSYSTEM=="backlight",RUN+="/bin/chmod 666 /sys/class/backlight/%k/brightness /
 Then reboot.
 
 ## INSTALLATION:
-It is recommended you install this in `/home/pi`.  The service file you'll install later assumes this, so if you install it somewhere else, you'll need to edit rpisc.service.
+For the script to work properly, you need to install a few things first.  You'll need the module to control the brightness of the screen:
+```
+sudo pip3 install rpi-backlight
+```
+If you are running on Raspian Bullseye or later, and using the camera as a light sensor, you'll also need:
+```
+sudo apt install -y python3-libcamera python3-kms++
+sudo apt install -y python3-pyqt5 python3-prctl libatlas-base-dev ffmpeg python3-pip
+sudo pip3 install numpy --upgrade
+sudo pip3 install picamera2
+```
 
+It is recommended you install this in `/home/pi`.  The service file you'll install later assumes this, so if you install it somewhere else, you'll need to edit rpisc.service.
 
 ## CONFIGURATION:
 You can run this without further configuration.  If you want to change any of the defaults, you should create a new file called settings.py and update the specific setting(s) you want to change.
 
-
 ## ABOUT AUTO DIMMING:
 Auto dimming allows you to do certain actions based on given triggers or times.  Auto dim understands special triggers and time based triggers.  There are three special triggers: dark, dim, and bright (these require a functioning BH1750 ambient light sensor or RPi camera to do anything).  You can change the light level thresholds if needed.  Time triggers can accept any 24 hour formatted time.  Time triggers can also be set to run only on weekdays or the weekend.  If you turn off the display with a timed trigger, light levels cannot override that.  You MUST turn the display back on with another timed trigger.  See settings-example.py for the exact format for timed triggers.
-
 
 ## USAGE:
 To run from the terminal (for testing): `python3 /home/pi/rpi.screencontrol/execute.py`  
@@ -52,4 +60,4 @@ sudo systemctl stop rpisc.service
 sudo systemctl start rpisc.service 
 ```
 
-You can change settings by editing the settings.py file any time you'd like.  The script will reload the settings automatically.  No need to stop/start the script.
+If you change any settings, it's best to restart the service.
