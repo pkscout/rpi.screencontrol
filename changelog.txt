@@ -1,3 +1,6 @@
+v.1.1.1
+- fix for Pi light sensor routine returning 0 for light level
+
 v.1.1.0
 - updated camera code to work with Picamera2 in Raspian Bullseye
 

@@ -9,14 +9,14 @@ import random
 try:
     import picamera
     import picamera.array
-    has_camera = True
+    has_legacy = True
 except ImportError:
-    has_camera = False
+    has_legacy = False
 try:
     from picamera2 import Picamera2
-    has_camera2 = True
+    has_camera = True
 except:
-    has_camera2 = False
+    has_camera = False
 try:
     import smbus2
     has_smbus = True
@@ -44,7 +44,7 @@ class AmbientSensor:
                 time.sleep(0.1)
             return level/self.OVERSAMPLE + 1
         elif self.TESTMODE:
-            return random.randint(0, 100)
+            return random.randint(1, 100)
         return None
 
     def _converttonumber(self, data):
@@ -56,40 +56,51 @@ class RPiCamera:
         self.WIDTH = 128
         self.HEIGHT = 80
         self.TESTMODE = testmode
-        if has_camera2:
-            self.CAMERA = Picamera2()
-            config = self.CAMERA.create_still_configuration(
-                lores={"size": (self.WIDTH, self.HEIGHT)})
-            self.CAMERA.configure(config)
-        elif has_camera:
-            self.CAMERA = picamera.PiCamera()
-            self.CAMERA.exposure_mode = 'auto'
-            self.CAMERA.awb_mode = 'auto'
-            self.CAMERA.resolution = (self.WIDTH, self.HEIGHT)
-            self.CAMERA.led = useled
+        if has_camera:
+            self._set_camera()
+        elif has_legacy:
+            self._set_legacy()
 
     def LightLevel(self):
-        reading = None
-        if has_camera2:
-            no_camera = True
-            while no_camera:
-                try:
-                    self.CAMERA.start()
-                    no_camera = False
-                except RuntimeError:
-                    no_camera = True
-                if no_camera:
-                    print('camera error, waiting 1 second and trying again')
-                    time.sleep(1)
-            np_array = self.CAMERA.capture_array('lores')
-            self.CAMERA.stop()
-            reading = int(100*np.average(np_array[:self.HEIGHT, :])/235)
-            # this sets the brightness as 0 to 100
-        elif has_camera:
-            for i in range(0, 5):
-                with picamera.array.PiRGBArray(self.CAMERA) as stream:
-                    self.CAMERA.capture(stream, format='rgb')
-                    reading = int(np.average(stream.array[..., 1])) + 1
+        if has_camera:
+            return self._check_camera()
+        elif has_legacy:
+            return self._check_legacy()
         elif self.TESTMODE:
-            reading = random.randint(0, 100)
+            return random.randint(1, 100)
+        return None
+
+    def _set_camera(self):
+        self.CAMERA = Picamera2()
+        config = self.CAMERA.create_still_configuration(
+            lores={"size": (self.WIDTH, self.HEIGHT)})
+        self.CAMERA.configure(config)
+
+    def _check_camera(self):
+        no_camera = True
+        while no_camera:
+            try:
+                self.CAMERA.start()
+                no_camera = False
+            except RuntimeError:
+                no_camera = True
+            if no_camera:
+                time.sleep(1)
+        np_array = self.CAMERA.capture_array('lores')
+        self.CAMERA.stop()
+        return int(100*np.average(np_array[:self.HEIGHT, :])/235) + 1
+
+    def _set_legacy(self):
+        self.CAMERA = picamera.PiCamera()
+        self.CAMERA.exposure_mode = 'auto'
+        self.CAMERA.awb_mode = 'auto'
+        self.CAMERA.resolution = (self.WIDTH, self.HEIGHT)
+        self.CAMERA.led = useled
+
+    def _check_legacy(self):
+        reading = None
+        for i in range(0, 5):
+            with picamera.array.PiRGBArray(self.CAMERA) as stream:
+                self.CAMERA.capture(stream, format='rgb')
+                reading = int(np.average(stream.array[..., 1])) + 1
         return reading
