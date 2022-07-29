@@ -1,13 +1,21 @@
-
 import resources.config as config
 import calendar
 import os
 import time
 import traceback
+import re
+import json
 from datetime import datetime
 from resources.lib.screens import RPiTouchscreen
 from resources.lib.cameras import AmbientSensor, RPiCamera
 from resources.lib.xlogger import Logger
+
+try:
+    import paho.mqtt.publish as publish
+    import paho.mqtt.client as mqtt
+    has_mqtt = True
+except ImportError:
+    has_mqtt = False
 
 
 class ScreenControl:
@@ -25,6 +33,25 @@ class ScreenControl:
         self.BRIGHTRUN = False
         self.DIMRUN = False
         self.WAITTIME = config.Get('autodimdelta') * 60
+        device = {'identifiers': [self._cleanup(config.Get('device_identifier'))],
+                  'name': config.Get('device_name'),
+                  'manufacturer': config.Get('device_manufacturer'),
+                  'model': config.Get('device_model'),
+                  'sw_version': config.Get('device_version'),
+                  'configuration_url': config.Get('device_config_url')}
+        self.MQTTAUTH = {'username': config.Get('mqtt_user'),
+                         'password': config.Get('mqtt_pass')}
+        self.MQTTHOST = config.Get('mqtt_host')
+        self.MQTTPORT = config.Get('mqtt_port')
+        self.MQTTCLIENT = config.Get('mqtt_clientid')
+        self.MQTTPATH = config.Get('mqtt_path')
+        self.MQTTRETAIN = config.Get('mqtt_retain')
+        self.MQTTSENSORNAME = config.Get('mqtt_sensor_name')
+        self.MQTTSENSORID = config.Get('mqtt_sensor_id')
+        self.MQTTDISCOVER = config.Get('mqtt_discover')
+        if self.MQTTDISCOVER:
+            self._send('Light', device=device)
+            self._send('Light Level', device=device)
         self._updatesettings()
 
     def Start(self):
@@ -33,20 +60,25 @@ class ScreenControl:
             while self.KEEPRUNNING:
                 if self.AUTODIM:
                     self.LW.log(['checking autodim'])
-                    lightlevel = self.CAMERA.LightLevel()
+                    light_level = self.CAMERA.LightLevel()
                     self.LW.log(['got back %s from light sensor' %
-                                str(lightlevel)])
-                    css = self.SCREENSTATE
+                                str(light_level)])
                     do_dark = False
                     do_bright = False
                     do_dim = False
-                    if lightlevel:
-                        if lightlevel <= self.DARKTHRESHOLD:
+                    if light_level:
+                        if light_level <= self.DARKTHRESHOLD:
                             do_dark = True
-                        elif lightlevel <= self.BRIGHTTHRESHOLD:
+                            light_detected = 'OFF'
+                        elif light_level <= self.BRIGHTTHRESHOLD:
                             do_dim = True
+                            light_detected = 'ON'
                         else:
                             do_bright = True
+                            light_detected = 'ON'
+                        if self.MQTTDISCOVER:
+                            self._send('Light', item_state=light_detected)
+                            self._send('Light Level', item_state=light_level)
                     if do_dark and not self.DARKRUN:
                         self.LW.log(
                             ['dark trigger activated with ' + self.DARKACTION])
@@ -135,6 +167,67 @@ class ScreenControl:
                     self.STOREDBRIGHTNESS = level
                     self.LW.log(
                         ['screen is off, so set stored brightness to ' + str(level)])
+
+    def _send(self, item, item_state=None, device=None):
+        if self.MQTTSENSORNAME:
+            friendly_name = '%s %s' % (self.MQTTSENSORNAME, item)
+        else:
+            friendly_name = item
+        entity_id = self._cleanup(friendly_name)
+        if item.lower() == 'light':
+            mqtt_type = 'binary_sensor'
+            unique_id = self._cleanup(self.MQTTSENSORID) + '_light'
+        else:
+            mqtt_type = 'sensor'
+            unique_id = self._cleanup(self.MQTTSENSORID) + '_light_level'
+        mqtt_publish = 'homeassistant/%s/%s' % (mqtt_type, entity_id)
+        if device:
+            mqtt_config = mqtt_publish + '/config'
+            payload = {}
+            payload['name'] = friendly_name
+            payload['unique_id'] = unique_id
+            payload['state_topic'] = mqtt_publish + '/state'
+            if mqtt_type == 'binary_sensor':
+                payload['device_class'] = 'light'
+            payload['device'] = device
+            self.LW.log(['sending config for sensor %s to %s' %
+                         (friendly_name, self.MQTTHOST)])
+            self._mqtt_send(mqtt_config, json.dumps(payload))
+        elif item_state:
+            self.LW.log(['sending %s as status for sensor %s to %s' %
+                        (item_state, friendly_name, self.MQTTHOST)])
+            self._mqtt_send(mqtt_publish + '/state', item_state)
+
+    def _mqtt_send(self, mqtt_publish, payload):
+        conn_error = ''
+        if has_mqtt:
+            try:
+                publish.single(mqtt_publish,
+                               payload=payload,
+                               retain=self.MQTTRETAIN,
+                               hostname=self.MQTTHOST,
+                               auth=self.MQTTAUTH,
+                               client_id=self.MQTTCLIENT,
+                               port=self.MQTTPORT,
+                               protocol=mqtt.MQTTv311)
+            except ConnectionRefusedError:
+                conn_error = 'refused'
+            except ConnectionAbortedError:
+                conn_error = 'aborted'
+            except ConnectionResetError:
+                conn_error = 'reset'
+            except ConnectionError:
+                conn_error = 'error'
+            if conn_error:
+                self.LW.log(['MQTT connection %s' % conn_error])
+        else:
+            self.LW.log(
+                ['MQTT python libraries are not installed, no message sent'])
+
+    def _cleanup(self, item):
+        if item:
+            return re.sub(r'[^\w]', '_', item.lower())
+        return item
 
     def _updatesettings(self):
         self.AUTODIM = config.Get('autodim')

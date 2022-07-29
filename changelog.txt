@@ -1,3 +1,6 @@
+v.1.2.0
+- added option to send light level info to HA via MQTT
+
 v.1.1.1
 - fix for Pi light sensor routine returning 0 for light level
 
