@@ -189,6 +189,9 @@ class ScreenControl:
             payload['state_topic'] = mqtt_publish + '/state'
             if mqtt_type == 'binary_sensor':
                 payload['device_class'] = 'light'
+            else:
+                payload['device_class'] = 'illuminance'
+                payload['state_class'] = 'measurement'
             payload['device'] = device
             self.LW.log(['sending config for sensor %s to %s' %
                          (friendly_name, self.MQTTHOST)])
