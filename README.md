@@ -53,7 +53,7 @@ The light threshold below which the system considers it to be dark.  Between the
 These are special actions to take when certain conditions are true.  `ScreenOff` turns the screen off, `ScreenOn` with a level changes the screen brightness to the given level (from 1 to 100).
 
 * `timedtriggers = <list>` (default `[]`)  
-This is a list of times to trigger an action.  Each entry is itself a list.  The first item is a time (in a valid format), the second time is the action (`ScreenOff` or `ScreenOn` with a brightness level) and the last item (which is optional) is a string of either `weekdays` or `weekends` indicating whether the trigger runs only certain parts of the week.
+This is a list of times to trigger an action.  Each entry is itself a list.  The first item is a time (in 24h format), the second item is the action (`ScreenOff` or `ScreenOn` with a brightness level) and the last item (which is optional) is a string of either `weekdays` or `weekends` indicating whether the trigger runs only certain parts of the week.
 
 * `which_camera = <str>` (default `pi`)  
 Which device to use as a light sensor.  The default is to use a Raspberry Pi camera.  If you are using an i2c based light sensor, change this to `ambient`.
@@ -95,14 +95,14 @@ Tells the script whether to send MQTT updates.
 A string to use at the beginning of the friendly name for the sensors.  By default the sensors are just called `Light` and `Light Level`, so this let's you have something like `Living Room Light` and `Living Room Light Level`.
 
 * `mqtt_sensor_id = <str>` (default `BPQjLznvX3NJJ2ty8zD8P8P6q7cPso7GCM32Zcan`)  
-This is a random string to ensure the sensor id is unique.  `_light` and `_light level` are added at the end of this string to differential the sensors.  If you include a `mqtt_sensor_name` that is appended as well.  If you're running this on multiple devices, it's probably worth changing this for each device.
+This is a random string to ensure the sensor id is unique.  `_light` and `_light level` are added at the end of this string to differentiate the sensors.  If you include a `mqtt_sensor_name` that is appended as well.  If you're running this on multiple devices, it's probably worth changing this for each device.
 
 
 * `device_name = <str>` (default `Light Sensor`)  
 The name of the device.  If you run multiple presence trackers in a house, by default all tracker entities will show up under one device (when using the MQTT notifier).  If you want separate devices for each light sensor, you need to change the name of the device.  You also need to change the identifier (below).
 
 * `device_identifier = <str>` (default `dLa6kirY3JrhzNDFEjDeyyHxRHgiBJmExQRFVC7U`)  
-The "serial number" of the device.  If you run multiple presence trackers in a house, by default all tracker entities will show up under one device (when using the MQTT notifier).  If you want separate devices for each presence tracker, you need to change the identifier of the device.  You also need to change the name (above).
+The "serial number" of the device.  If you run multiple light sensors in a house, by default all entities will show up under one device.  If you want separate devices for each pair of sensors, you need to change the identifier of the device.  You also need to change the name (above).
 
 * `device_version = <str>`  
 The version number of the device. This is bumped automatically anytime the script is updated. I have no idea why you would want to override this, but you can.
