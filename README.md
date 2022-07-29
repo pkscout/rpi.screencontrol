@@ -8,7 +8,7 @@ This script sets the brightness, and screen on/off based on triggers (dark, dim,
 1. Python3 is required.
 
 ## PI CONFIGURATION:
-To use the BH1750 ambient light sensor and/or the BME280 temperature sensor, you need to enable i2c in raspi-config. If you are using Raspian Buster and the Pi Camera to detect light levels, the camera must be turned on in raspi-config.  Both the camera and i2c options are under INTERFACING OPTIONS in raspi-config.
+To use the BH1750 ambient light sensor, you need to enable i2c in raspi-config. If you are using Raspian Buster and the Pi Camera to detect light levels, the camera must be turned on in raspi-config.  Both the camera and i2c options are under INTERFACING OPTIONS in raspi-config.
 
 To control the RPi 7" touchscreen you need to also edit the backlight rules. From a terminal window:
 ```
@@ -26,14 +26,14 @@ For the script to work properly, you need to install a few things first.  You'll
 ```
 sudo pip3 install rpi-backlight
 ```
-If you are running on Raspian Bullseye or later, and using the camera as a light sensor, you'll also need:
+If you are running on Raspian Bullseye or later and using the camera as a light sensor, you'll also need:
 ```
 sudo apt install -y python3-libcamera python3-kms++
 sudo apt install -y python3-pyqt5 python3-prctl libatlas-base-dev ffmpeg python3-pip
 sudo pip3 install numpy --upgrade
 sudo pip3 install picamera2
 ```
-If you are going to use an MQTT broker to communicate light level, you will also need the following:
+If you are going to use an MQTT broker to communicate light level to Home Assistant, you will also need the following:
 ```
 pip3 install paho-mqtt
 ```
@@ -82,11 +82,8 @@ The username needed if authentication is required for your MQTT broker.
 * `mqtt_pass = <str>` (default `mqtt_password`)  
 The password needed if authentication is required for your MQTT broker.
 
-* `mqtt_clientid = <str>` (default `presencetracker`)  
+* `mqtt_clientid = <str>` (default `lightsensor`)  
 The client ID provided to the MQTT broker.
-
-* `mqtt_path = <str>` (default `homeassistant/presence_tracker`)  
-The root topic sent to your MQTT broker.  The default is configured so that you can use [MQTT Discovery](https://www.home-assistant.io/docs/mqtt/discovery/) with Home Assistant.
 
 * `mqtt_retain = <boolean>` (default `True`)  
 Tells the MQTT broker whether to retain the messages to send to clients when they first connect.
@@ -102,7 +99,7 @@ This is a random string to ensure the sensor id is unique.  `_light` and `_light
 
 
 * `device_name = <str>` (default `Light Sensor`)  
-The name of the device.  If you run multiple presence trackers in a house, by default all tracker entities will show up under one device (when using the MQTT notifier).  If you want separate devices for each presence tracker, you need to change the name of the device.  You also need to change the identifier (below).
+The name of the device.  If you run multiple presence trackers in a house, by default all tracker entities will show up under one device (when using the MQTT notifier).  If you want separate devices for each light sensor, you need to change the name of the device.  You also need to change the identifier (below).
 
 * `device_identifier = <str>` (default `dLa6kirY3JrhzNDFEjDeyyHxRHgiBJmExQRFVC7U`)  
 The "serial number" of the device.  If you run multiple presence trackers in a house, by default all tracker entities will show up under one device (when using the MQTT notifier).  If you want separate devices for each presence tracker, you need to change the identifier of the device.  You also need to change the name (above).
@@ -127,7 +124,7 @@ For debugging you can get a more verbose log by setting this to True.
 
 
 ## ABOUT AUTO DIMMING:
-Auto dimming allows you to do certain actions based on given triggers or times.  Auto dim understands special triggers and time based triggers.  There are three special triggers: dark, dim, and bright (these require a functioning BH1750 ambient light sensor or RPi camera to do anything).  You can change the light level thresholds if needed.  Time triggers can accept any 24 hour formatted time.  Time triggers can also be set to run only on weekdays or the weekend.  If you turn off the display with a timed trigger, light levels cannot override that.  You MUST turn the display back on with another timed trigger.  See settings-example.py for the exact format for timed triggers.
+Auto dimming allows you to do certain actions based on given triggers or times.  Auto dim understands special triggers and time based triggers.  There are three special triggers: dark, dim, and bright (these require a functioning BH1750 ambient light sensor or RPi camera to do anything).  You can change the light level thresholds if needed.  Time triggers can accept any 24 hour formatted time.  Time triggers can also be set to run only on weekdays or the weekend.  If you turn off the display with a timed trigger, light levels cannot override that.  You MUST turn the display back on with another timed trigger.
 
 ## USAGE: 
 To run from the terminal (for testing): `python3 /home/pi/rpi.screencontrol/execute.py`  
