@@ -7,6 +7,9 @@ Type = simple
 User = pi
 KillSignal = SIGINT
 ExecStart = /usr/bin/python3 /home/pi/rpi.screencontrol/execute.py
+Environment=PYTHONUNBUFFERED=1
+Type=notify
+WatchdogSec=60
 
 [Install]
 WantedBy = multi-user.target

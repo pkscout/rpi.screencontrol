@@ -17,6 +17,12 @@ try:
 except ImportError:
     has_mqtt = False
 
+try:
+    import sdnotify
+    has_notify = True
+except ImportError:
+    has_notify = False
+
 
 class ScreenControl:
 
@@ -49,15 +55,32 @@ class ScreenControl:
         self.MQTTSENSORNAME = config.Get('mqtt_sensor_name')
         self.MQTTSENSORID = config.Get('mqtt_sensor_id')
         self.MQTTDISCOVER = config.Get('mqtt_discover')
+        self.MQTTQOS = config.Get('mqtt_qos')
+        version = config.Get('mqtt_version')
+        if version == 'v5':
+            self.MQTTVERSION = mqtt.MQTTv5
+        elif version == 'v311':
+            self.MQTTVERSION = mqtt.MQTTv311
+        else:
+            self.MQTTVERSION = mqtt.MQTTv31
         if self.MQTTDISCOVER:
             self._send('Light', device=device)
             self._send('Light Level', device=device)
+        if config.Get('use_watchdog') and has_notify:
+            self.WATCHDOG = sdnotify.SystemdNotifier()
+            self.LW.log(['setting up Watchdog'])
+            self.WATCHDOG.notify('READY=1')
+        else:
+            self.WATCHDOG = None
         self._updatesettings()
 
     def Start(self):
         self.LW.log(['starting up ScreenControl'], 'info')
         try:
             while self.KEEPRUNNING:
+                if self.WATCHDOG:
+                    self.LW.log(['sending notice to Watchdog'])
+                    self.WATCHDOG.notify('WATCHDOG=1')
                 if self.AUTODIM:
                     self.LW.log(['checking autodim'])
                     light_level = self.CAMERA.LightLevel()
@@ -202,32 +225,23 @@ class ScreenControl:
             self._mqtt_send(mqtt_publish + '/state', item_state)
 
     def _mqtt_send(self, mqtt_publish, payload):
-        conn_error = ''
         if has_mqtt:
             try:
                 publish.single(mqtt_publish,
                                payload=payload,
+                               qos=self.MQTTQOS,
                                retain=self.MQTTRETAIN,
                                hostname=self.MQTTHOST,
                                auth=self.MQTTAUTH,
                                client_id=self.MQTTCLIENT,
                                port=self.MQTTPORT,
-                               protocol=mqtt.MQTTv311)
-            except ConnectionRefusedError:
-                conn_error = 'refused'
-            except ConnectionAbortedError:
-                conn_error = 'aborted'
-            except ConnectionResetError:
-                conn_error = 'reset'
-            except ConnectionError:
-                conn_error = 'error'
-            except OSError:
-                conn_error = 'error. Network unreachable'
-            if conn_error:
-                self.LW.log(['MQTT connection %s' % conn_error])
+                               protocol=self.MQTTVERSION)
+            except (ConnectionRefusedError, ConnectionAbortedError, ConnectionResetError, ConnectionError, OSError) as e:
+                self.LW.log(['MQTT connection problem: ' + e])
         else:
             self.LW.log(
                 ['MQTT python libraries are not installed, no message sent'])
+        self.LW.log(['sent to %s: %s' % (mqtt_publish, payload)])
 
     def _cleanup(self, item):
         if item:

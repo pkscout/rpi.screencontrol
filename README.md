@@ -35,7 +35,11 @@ sudo pip3 install picamera2
 ```
 If you are going to use an MQTT broker to communicate light level to Home Assistant, you will also need the following:
 ```
-pip3 install paho-mqtt
+sudo pip3 install paho-mqtt
+```
+If you want to use the Watchdog service to restart the script if needed, you will also need the following:
+```
+sudo pip3 install sdnotify
 ```
 
 It is recommended you install this in `/home/pi`.  The service file you'll install later assumes this, so if you install it somewhere else, you'll need to edit rpisc.service.
@@ -45,6 +49,9 @@ You can run this without further configuration.  If you want to change any of th
 
 * `autodimdelta = <float>` (default `0.25`)  
 The time in minutes between light level checks.
+
+* `use_watchdog = <bool>` (default `False`)  
+If you want to use WATCHDOG to restart the script if it hangs, change this to `True`.
 
 * `dark = <int>` (default `5`)  
 The light threshold below which the system considers it to be dark.  Between the `dark` and `bright` thresholds the system considers the light level to be dim.
@@ -130,7 +137,17 @@ Auto dimming allows you to do certain actions based on given triggers or times. 
 To run from the terminal (for testing): `python3 /home/pi/rpi.screencontrol/execute.py`  
 To exit: CNTL-C
 
-Running from the terminal is useful during initial testing, but once you know it's working the way you want, you should set it to autostart.  To do that you need to copy rpiwsl.service.txt to the systemd directory, change the permissions, and configure systemd. From a terminal window:
+Running from the terminal is useful during initial testing, but once you know it's working the way you want, you should set it to autostart.  To do that you need to copy one of the two scripts to the systemd directory, change the permissions, and configure systemd.
+
+To use with watchdog, from a terminal window:
+```
+sudo cp -R /home/pi/rpi.screencontrol/rpisc.service.watchdog.txt /lib/systemd/system/rpisc.service
+sudo chmod 644 /lib/systemd/system/rpisc.service
+sudo systemctl daemon-reload
+sudo systemctl enable rpisc.service
+```
+
+To use without watchdog, from a terminal window:
 ```
 sudo cp -R /home/pi/rpi.screencontrol/rpisc.service.txt /lib/systemd/system/rpisc.service
 sudo chmod 644 /lib/systemd/system/rpisc.service
