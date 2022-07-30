@@ -95,6 +95,12 @@ The client ID provided to the MQTT broker.
 * `mqtt_retain = <boolean>` (default `True`)  
 Tells the MQTT broker whether to retain the messages to send to clients when they first connect.
 
+* `mqtt_qos = <int>` (default `0`)  
+By default the script uses quality of service level 0 to talk to the broker.  You can change that here to `1` or `2`.
+
+* `mqtt_version = <str>` (default `v5`)  
+By default the script uses MQTT protocol version 5 to talk to the broker.  If you want to use an older version, you can use `v311` or `v31`.
+
 * `mqtt_discover = <boolean>` (default `False`)  
 Tells the script whether to send MQTT updates.
 
