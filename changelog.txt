@@ -1,3 +1,6 @@
+v.1.2.1
+- added trap to exit camera loop after five tries
+
 v.1.2.0
 - added option to send light level info to HA via MQTT
 

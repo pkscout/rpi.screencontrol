@@ -77,18 +77,25 @@ class RPiCamera:
         self.CAMERA.configure(config)
 
     def _check_camera(self):
-        no_camera = True
-        while no_camera:
+        camera = False
+        i = 1
+        reading = None
+        while not camera:
             try:
                 self.CAMERA.start()
-                no_camera = False
+                camera = True
             except RuntimeError:
-                no_camera = True
-            if no_camera:
-                time.sleep(1)
-        np_array = self.CAMERA.capture_array('lores')
-        self.CAMERA.stop()
-        return int(100*np.average(np_array[:self.HEIGHT, :])/235) + 1
+                camera = False
+            if not camera:
+                time.sleep(3)
+                i = i + 1
+            if i > 5:
+                break
+        if camera:
+            np_array = self.CAMERA.capture_array('lores')
+            self.CAMERA.stop()
+            reading = int(100*np.average(np_array[:self.HEIGHT, :])/235) + 1
+        return reading
 
     def _set_legacy(self):
         self.CAMERA = picamera.PiCamera()
