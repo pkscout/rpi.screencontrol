@@ -237,7 +237,7 @@ class ScreenControl:
                                port=self.MQTTPORT,
                                protocol=self.MQTTVERSION)
             except (ConnectionRefusedError, ConnectionAbortedError, ConnectionResetError, ConnectionError, OSError) as e:
-                self.LW.log(['MQTT connection problem: ' + e])
+                self.LW.log(['MQTT connection problem: ' + str(e)])
         else:
             self.LW.log(
                 ['MQTT python libraries are not installed, no message sent'])
