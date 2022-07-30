@@ -221,6 +221,8 @@ class ScreenControl:
                 conn_error = 'reset'
             except ConnectionError:
                 conn_error = 'error'
+            except OSError:
+                conn_error = 'error. Network unreachable'
             if conn_error:
                 self.LW.log(['MQTT connection %s' % conn_error])
         else:
