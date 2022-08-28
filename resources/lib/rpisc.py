@@ -4,18 +4,11 @@ import os
 import time
 import traceback
 import re
-import json
 from datetime import datetime
 from resources.lib.screens import RPiTouchscreen
 from resources.lib.cameras import AmbientSensor, RPiCamera
+from resources.lib.notifiers import MqttNotifier, HaRestNotifier, NoNotifier
 from resources.lib.xlogger import Logger
-
-try:
-    import paho.mqtt.publish as publish
-    import paho.mqtt.client as mqtt
-    has_mqtt = True
-except ImportError:
-    has_mqtt = False
 
 try:
     import sdnotify
@@ -29,43 +22,16 @@ class ScreenControl:
     def __init__(self, lw):
         self.LW = lw
         self.KEEPRUNNING = True
-        self.WHICHCAMERA = config.Get('which_camera')
         self.FIXEDBRIGHTNESS = 'Brightness:100'
-        self.CAMERA = self._pick_camera()
+        self.CAMERA = self._pick_camera(config.Get('which_camera'))
         self.SCREEN = self._pick_screen()
+        self.NOTIFIER = self._pick_notifer(config.Get('which_notifier'))
         self.STOREDBRIGHTNESS = self.SCREEN.GetBrightness()
         self.SCREENSTATE = 'On'
         self.DARKRUN = False
         self.BRIGHTRUN = False
         self.DIMRUN = False
         self.WAITTIME = config.Get('autodimdelta') * 60
-        device = {'identifiers': [self._cleanup(config.Get('device_identifier'))],
-                  'name': config.Get('device_name'),
-                  'manufacturer': config.Get('device_manufacturer'),
-                  'model': config.Get('device_model'),
-                  'sw_version': config.Get('device_version'),
-                  'configuration_url': config.Get('device_config_url')}
-        self.MQTTAUTH = {'username': config.Get('mqtt_user'),
-                         'password': config.Get('mqtt_pass')}
-        self.MQTTHOST = config.Get('mqtt_host')
-        self.MQTTPORT = config.Get('mqtt_port')
-        self.MQTTCLIENT = config.Get('mqtt_clientid')
-        self.MQTTPATH = config.Get('mqtt_path')
-        self.MQTTRETAIN = config.Get('mqtt_retain')
-        self.MQTTSENSORNAME = config.Get('mqtt_sensor_name')
-        self.MQTTSENSORID = config.Get('mqtt_sensor_id')
-        self.MQTTDISCOVER = config.Get('mqtt_discover')
-        self.MQTTQOS = config.Get('mqtt_qos')
-        version = config.Get('mqtt_version')
-        if version == 'v5':
-            self.MQTTVERSION = mqtt.MQTTv5
-        elif version == 'v311':
-            self.MQTTVERSION = mqtt.MQTTv311
-        else:
-            self.MQTTVERSION = mqtt.MQTTv31
-        if self.MQTTDISCOVER:
-            self._send('Light', device=device)
-            self._send('Light Level', device=device)
         if config.Get('use_watchdog') and has_notify:
             self.WATCHDOG = sdnotify.SystemdNotifier()
             self.LW.log(['setting up Watchdog'])
@@ -99,9 +65,8 @@ class ScreenControl:
                         else:
                             do_bright = True
                             light_detected = 'ON'
-                        if self.MQTTDISCOVER:
-                            self._send('Light', item_state=light_detected)
-                            self._send('Light Level', item_state=light_level)
+                        self.NOTIFIER.Send('Light', light_detected)
+                        self.NOTIFIER.Send('Light Level', light_level)
                     if do_dark and not self.DARKRUN:
                         self.LW.log(
                             ['dark trigger activated with ' + self.DARKACTION])
@@ -191,58 +156,6 @@ class ScreenControl:
                     self.LW.log(
                         ['screen is off, so set stored brightness to ' + str(level)])
 
-    def _send(self, item, item_state=None, device=None):
-        if self.MQTTSENSORNAME:
-            friendly_name = '%s %s' % (self.MQTTSENSORNAME, item)
-        else:
-            friendly_name = item
-        entity_id = self._cleanup(friendly_name)
-        if item.lower() == 'light':
-            mqtt_type = 'binary_sensor'
-            unique_id = self._cleanup(self.MQTTSENSORID) + '_light'
-        else:
-            mqtt_type = 'sensor'
-            unique_id = self._cleanup(self.MQTTSENSORID) + '_light_level'
-        mqtt_publish = 'homeassistant/%s/%s' % (mqtt_type, entity_id)
-        if device:
-            mqtt_config = mqtt_publish + '/config'
-            payload = {}
-            payload['name'] = friendly_name
-            payload['unique_id'] = unique_id
-            payload['state_topic'] = mqtt_publish + '/state'
-            if mqtt_type == 'binary_sensor':
-                payload['device_class'] = 'light'
-            else:
-                payload['device_class'] = 'illuminance'
-                payload['state_class'] = 'measurement'
-            payload['device'] = device
-            self.LW.log(['sending config for sensor %s to %s' %
-                         (friendly_name, self.MQTTHOST)])
-            self._mqtt_send(mqtt_config, json.dumps(payload))
-        elif item_state:
-            self.LW.log(['sending %s as status for sensor %s to %s' %
-                        (item_state, friendly_name, self.MQTTHOST)])
-            self._mqtt_send(mqtt_publish + '/state', item_state)
-
-    def _mqtt_send(self, mqtt_publish, payload):
-        if has_mqtt:
-            try:
-                publish.single(mqtt_publish,
-                               payload=payload,
-                               qos=self.MQTTQOS,
-                               retain=self.MQTTRETAIN,
-                               hostname=self.MQTTHOST,
-                               auth=self.MQTTAUTH,
-                               client_id=self.MQTTCLIENT,
-                               port=self.MQTTPORT,
-                               protocol=self.MQTTVERSION)
-            except (ConnectionRefusedError, ConnectionAbortedError, ConnectionResetError, ConnectionError, OSError) as e:
-                self.LW.log(['MQTT connection problem: ' + str(e)])
-        else:
-            self.LW.log(
-                ['MQTT python libraries are not installed, no message sent'])
-        self.LW.log(['sent to %s: %s' % (mqtt_publish, payload)])
-
     def _cleanup(self, item):
         if item:
             return re.sub(r'[^\w]', '_', item.lower())
@@ -296,9 +209,21 @@ class ScreenControl:
             hour = str(int(hm[0]) + 12)
             return '%s:%s' % (hour, hm[1])
 
-    def _pick_camera(self):
-        self.LW.log(['setting up %s light sensor' % self.WHICHCAMERA])
-        if self.WHICHCAMERA.lower() == 'pi':
+    def _pick_notifier(self, whichnotifier):
+        self.LW.log(['setting up %s notifier' % str(whichnotifier)])
+        if not whichnotifier:
+            return NoNotifier(config=config)
+        if whichnotifier.lower() == 'mqtt':
+            return MqttNotifier(config=config)
+        elif whichnotifier.lower() == 'harest':
+            return HaRestNotifier(config=config)
+        else:
+            self.LW.log(['invalid notifier specified'])
+            return None
+
+    def _pick_camera(self, whichcamera):
+        self.LW.log(['setting up %s light sensor' % whichcamera])
+        if whichcamera.lower() == 'pi':
             return RPiCamera(testmode=config.Get('testmode'))
         else:
             return AmbientSensor(port=config.Get('i2c_port'), address=config.Get('ambient_address'),
