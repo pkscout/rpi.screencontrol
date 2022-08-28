@@ -70,13 +70,13 @@ class MqttNotifier:
             friendly_name = '%s %s' % (self.SENSORNAME, device)
         else:
             friendly_name = device
-        entity_id = self._cleanup(friendly_name)
+        entity_id = _cleanup(friendly_name)
         if device.lower() == 'light':
             mqtt_type = 'binary_sensor'
-            unique_id = self._cleanup(self.SENSORID) + '_light'
+            unique_id = _cleanup(self.SENSORID) + '_light'
         else:
             mqtt_type = 'sensor'
-            unique_id = self._cleanup(self.SENSORID) + '_light_level'
+            unique_id = _cleanup(self.SENSORID) + '_light_level'
         mqtt_publish = 'homeassistant/%s/%s' % (mqtt_type, entity_id)
         if self.MQTTDISCOVER:
             mqtt_config = mqtt_publish + '/config'
@@ -89,11 +89,11 @@ class MqttNotifier:
                 payload['device_class'] = 'illuminance'
                 payload['state_class'] = 'measurement'
             payload['device'] = self.DEVICE
-            loglines.append(['sending config for sensor %s to %s' %
-                             (friendly_name, self.MQTTHOST)])
+            loglines.append('sending config for sensor %s to %s' %
+                            (friendly_name, self.MQTTHOST))
             self._mqtt_send(mqtt_config, json.dumps(payload))
-        loglines.append(['sending %s as status for sensor %s to %s' %
-                         (device_state, friendly_name, self.MQTTHOST)])
+        loglines.append('sending %s as status for sensor %s to %s' %
+                        (device_state, friendly_name, self.MQTTHOST))
         self._mqtt_send(mqtt_publish + '/state', device_state)
         return loglines
 
@@ -114,7 +114,7 @@ class HaRestNotifier:
             friendly_name = '%s %s' % (self.SENSORNAME, device)
         else:
             friendly_name = device
-        entity_id = self._cleanup(friendly_name)
+        entity_id = _cleanup(friendly_name)
         if device.lower() == 'light':
             rest_type = 'binary_sensor'
         else:

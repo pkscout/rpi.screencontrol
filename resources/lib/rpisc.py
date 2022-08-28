@@ -25,7 +25,7 @@ class ScreenControl:
         self.FIXEDBRIGHTNESS = 'Brightness:100'
         self.CAMERA = self._pick_camera(config.Get('which_camera'))
         self.SCREEN = self._pick_screen()
-        self.NOTIFIER = self._pick_notifer(config.Get('which_notifier'))
+        self.NOTIFIER = self._pick_notifier(config.Get('which_notifier'))
         self.STOREDBRIGHTNESS = self.SCREEN.GetBrightness()
         self.SCREENSTATE = 'On'
         self.DARKRUN = False
@@ -65,8 +65,11 @@ class ScreenControl:
                         else:
                             do_bright = True
                             light_detected = 'ON'
-                        self.NOTIFIER.Send('Light', light_detected)
-                        self.NOTIFIER.Send('Light Level', light_level)
+                        loglines = self.NOTIFIER.Send('Light', light_detected)
+                        self.LW.log(loglines, 'debug')
+                        loglines = self.NOTIFIER.Send(
+                            'Light Level', light_level)
+                        self.LW.log(loglines, 'debug')
                     if do_dark and not self.DARKRUN:
                         self.LW.log(
                             ['dark trigger activated with ' + self.DARKACTION])
