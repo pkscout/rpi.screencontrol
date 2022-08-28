@@ -62,6 +62,9 @@ These are special actions to take when certain conditions are true.  `ScreenOff`
 * `timedtriggers = <list>` (default `[]`)  
 This is a list of times to trigger an action.  Each entry is itself a list.  The first item is a time (in 24h format), the second item is the action (`ScreenOff` or `ScreenOn` with a brightness level) and the last item (which is optional) is a string of either `weekdays` or `weekends` indicating whether the trigger runs only certain parts of the week.
 
+* `which_notifier = <str>` (default `None`)  
+Which notifier to use.  The default is `None` and you can choose from `mqtt` (to use an MQTT broker) and `harest` (to use a Home Assitant Rest sensor).
+
 * `which_camera = <str>` (default `pi`)  
 Which device to use as a light sensor.  The default is to use a Raspberry Pi camera.  If you are using an i2c based light sensor, change this to `ambient`.
 
@@ -77,8 +80,14 @@ The i2c command prefix for the light sensor.
 * `ambient_oversample = <int>` (default `10`)  
 To get an accurate reading from the light sensor, the script gets the level multiple times and averages them.  This is the number of samples to take.
 
-* `mqtt_host = <str>` (default `127.0.0.1`)  
-The IP address of your MQTT broker.
+* `host = <str>` (default `127.0.0.1`)  
+The IP address of your MQTT broker (or HA instance depending on which notifier you use).
+
+* `rest_port = <int>` (default `8123`)  
+The port of your Home Assistant server.
+
+* `rest_token = <str>` (default `emptry string`)  
+The API token from your Home Assistant server.  You only need this is you are using the `harest` notifier.  For information on generating a token, see [Home Assistant User Profiles](https://www.home-assistant.io/docs/authentication/#your-account-profile).
 
 * `mqtt_port = <int>` (default `1883`)  
 The port of your MQTT broker.
@@ -101,13 +110,13 @@ By default the script uses quality of service level 0 to talk to the broker.  Yo
 * `mqtt_version = <str>` (default `v5`)  
 By default the script uses MQTT protocol version 5 to talk to the broker.  If you want to use an older version, you can use `v311` or `v31`.
 
-* `mqtt_discover = <boolean>` (default `False`)  
-Tells the script whether to send MQTT updates.
+* `mqtt_discover = <boolean>` (default `True`)  
+This tells screen control whether or not to send the device and entity configs to Home Assistant.  If you set this to `False`, Home Assistant will not automatically create entities.
 
-* `mqtt_sensor_name = <str>` (default `empty string`)  
+* `sensor_name = <str>` (default `empty string`)  
 A string to use at the beginning of the friendly name for the sensors.  By default the sensors are just called `Light` and `Light Level`, so this let's you have something like `Living Room Light` and `Living Room Light Level`.
 
-* `mqtt_sensor_id = <str>` (default `BPQjLznvX3NJJ2ty8zD8P8P6q7cPso7GCM32Zcan`)  
+* `sensor_id = <str>` (default `BPQjLznvX3NJJ2ty8zD8P8P6q7cPso7GCM32Zcan`)  
 This is a random string to ensure the sensor id is unique.  `_light` and `_light level` are added at the end of this string to differentiate the sensors.  If you include a `mqtt_sensor_name` that is appended as well.  If you're running this on multiple devices, it's probably worth changing this for each device.
 
 
@@ -171,4 +180,12 @@ If you change any settings, it's best to restart the service.
 
 ### USING WITH HOME ASSISTANT
 
-By default, the MQTT messaging is disabled.  To enable it, see the `mqtt_discover` setting above.  When enabled, the script uses [MQTT Discovery](https://www.home-assistant.io/docs/mqtt/discovery/) to create a light binary sensor and a generic light level sensor in Home Assistant under a single device.  You can use those entities or device as desired in automations and Lovelace display.
+#### MQTT
+
+By default, the MQTT messaging is disabled.  To enable it, see the `which_notifier` setting above.  When enabled, the script by default uses [MQTT Discovery](https://www.home-assistant.io/docs/mqtt/discovery/) to create a light binary sensor and a generic light level sensor in Home Assistant under a single device.  You can use those entities or device as desired in automations and Lovelace display.
+
+#### REST
+
+By default REST sensors are disabled.  To enable it, see the `which_notifier` setting above.  Once enabled, the script sends its information to Home Assistant via a [REST API call](https://developers.home-assistant.io/docs/api/rest/).  As noted in that link, if you are not using the `frontend` in your setup, you will need to add the API integration.  For this to work, you **must** also provide a Long Lived Token via the `rest_token` option in the settings file.
+
+Note that after a restart of Home Assistant, these sensors will show as unavailable.  They will become available once the script sends its next status update.
