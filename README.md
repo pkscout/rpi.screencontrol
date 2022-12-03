@@ -28,10 +28,9 @@ sudo pip3 install rpi-backlight
 ```
 If you are running on Raspian Bullseye or later and using the camera as a light sensor, you'll also need:
 ```
-sudo apt install -y python3-libcamera python3-kms++
+sudo apt install -y python3-libcamera python3-picamera2 python3-kms++
 sudo apt install -y python3-pyqt5 python3-prctl libatlas-base-dev ffmpeg python3-pip
 sudo pip3 install numpy --upgrade
-sudo pip3 install picamera2
 ```
 If you are going to use an MQTT broker to communicate light level to Home Assistant, you will also need the following:
 ```
